@@ -29,7 +29,7 @@ Anaconda 環境の場合 astropy は標準で入っています。svgwrite は '
 
 例:
 ```
-galaxy-annotator.py sample-galaxies.json sample-style.json test-data/test-wcs.fits test-data/test-in.jpg out.svg
+./galaxy-annotator.py sample-galaxies.json sample-style.json test-data/test-wcs.fits test-data/test-in.jpg out.svg
 ```
 
 - `sample-galaxies.json`: 銀河データファイルです。
@@ -136,7 +136,7 @@ galaxy-annotator.py sample-galaxies.json sample-style.json test-data/test-wcs.fi
 以下は `leda-get-votable.py` を使って `wcs.fits` から画像の写野を読み取ってその範囲に存在する銀河のデータを HyperLeda から取得する例です(現在はミラーサイトを使うようにしています)。
 
 ```
-leda-get-votable.py test-data/test-wcs.fits > votable.xml
+./leda-get-votable.py test-data/test-wcs.fits > votable.xml
 ```
 
 引数には Astrometry.net の出力した `wcs.fits` を指定します。結果は標準出力に出力されますが、ここではシェルのリダイレクトで `votable.xml` に保存しています。
@@ -146,7 +146,7 @@ leda-get-votable.py test-data/test-wcs.fits > votable.xml
 以下は `leda-votable-to-galaxy.py` を使って、上で取得した `votable.xml` から銀河情報ファイルを生成する例です。
 
 ```
-leda-votable-to-galaxy.py votable.xml > galaxy.json
+./leda-votable-to-galaxy.py votable.xml > galaxy.json
 ```
 
 結果は標準出力に出力されますが、ここではシェルのリダイレクトで `galaxy.json` に保存しています。
@@ -154,19 +154,19 @@ leda-votable-to-galaxy.py votable.xml > galaxy.json
 以下は `-m` オプションを指定して 17.5 等より明るい銀河のみを銀河情報ファイルに出力しています。
 
 ```
-leda-votable-to-galaxy.py -m 17.5 votable.xml > galaxy-17_5.json
+./leda-votable-to-galaxy.py -m 17.5 votable.xml > galaxy-17_5.json
 ```
 
 以下は `-d` オプションを追加して 17.5 等より明るい銀河のみを、距離情報(Gly (ギガ光年)表記の光路距離)を説明文として付加した銀河情報ファイルに出力しています。
 
 ```
-leda-votable-to-galaxy.py -m 17.5 -d votable.xml > galaxy-17_5-d.json
+./leda-votable-to-galaxy.py -m 17.5 -d votable.xml > galaxy-17_5-d.json
 ```
 
 以下はさらに `-j` オプションを追加して距離情報を日本語表記(光年)で出力する例です。
 
 ```
-leda-votable-to-galaxy.py -m 17.5 -d -j votable.xml > galaxy-17_5-d-ja.json
+./leda-votable-to-galaxy.py -m 17.5 -d -j votable.xml > galaxy-17_5-d-ja.json
 ```
 
 距離情報(光路距離)は赤方偏移で測定された視線速度データを元に算出しています。比較的近距離の銀河については誤差が大きい場合があります。宇宙モデルとしてはΛ-CDMモデルを、宇宙論パラメータとしては H<sub>0</sub> = 67.3 km/s/Mpc、Ω<sub>m</sub> = 0.315、Ω<sub>Λ</sub> = 0.685 を使用しています(これらは国立天文台が一般向けに遠方天体の距離に言及する際に使用しているものです)。
