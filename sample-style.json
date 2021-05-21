@@ -1,0 +1,23 @@
+{
+  "marker": {
+    "stroke": "yellow",
+    "stroke-width": 3,
+    "stroke-opacity": 0.5,
+    "size": 1.5,
+    "x-margin": 4,
+    "y-margin": 0,
+    "min-r": 15
+  },
+  "name": {
+    "font-size": 40,
+    "font-family": "Ubuntu Mono",
+    "fill": "yellow"
+  },
+  "desc": [
+    {
+      "font-family": "源真ゴシックP Light",
+      "font-size": 40,
+      "fill": "gray"
+    }
+  ]
+}
