@@ -36,8 +36,11 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
     for i, f in enumerate(tr.findall('./TD')):
         rec[fields[i]] = f.text
     it = rec['it']
-    if options.max_mag and (it == None or float(it) > options.max_mag):
-        continue
+    if options.max_mag:
+        if it == None:
+            it = rec['vt']
+        if float(it) > options.max_mag:
+            continue
     ltd_Gly = None
     if options.calc_distance and rec['v']:
         z = [ float(rec['v']) / 299792.458 ]
