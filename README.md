@@ -35,15 +35,15 @@ galaxy-annotator.py sample-galaxies.json sample-style.json test-data/test-wcs.fi
 - `sample-galaxies.json`: 銀河データファイルです。
 - `sample-style.json`: スタイル設定ファイルです。
 - `test-data/test-wcs.fits`: `test-data/test-in.jpg` を Astrometry.net でプレートソルブした際に生成された 'wcs.fits' です。
-- `test-data/test-in.jpg`: Astrometry.net に入力した画像ファイルです。
+- `test-data/test-in.jpg`: Astrometry.net に入力した元画像ファイルです。
 - `out.svg`: 出力先のSVGファイルです。
 
 マーカーは銀河を囲む楕円形として描画されます。銀河の名前がその右上に描画されます。説明文がある場合は名前の下に描画されます。
 
-出力されるSVG画像にはリンクの形で元の画像(第4引数でしていしたもの)を参照しています。ファイルを移動した時にはリンクが切れる可能性があります。また、SVGを扱うツールによっては元の画像が表示されない場合があります。
+出力されるSVG画像には元の画像(第4引数でしていしたもの)が埋め込まれます。SVGを扱うツールによっては元の画像が表示されない場合があります。
 
-- GIMP 2.8, eog (GNOMEの画像ビューア)では元画像が表示されませんでした。
-- Firefox, Chrome では正しく表示されるようです。
+- GIMP 2.8, Photoshop, eog (GNOMEの画像ビューア)では元画像が表示されませんでした。
+- Firefox, Chrome, Edge (Chromium版)では正しく表示されました。
 - Inkscape では正しく表示でき、編集可能です。
 
 ## 銀河データファイル

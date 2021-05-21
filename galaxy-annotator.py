@@ -3,6 +3,7 @@ import sys
 import os.path
 import math
 import json
+import base64
 import svgwrite
 from astropy import units as u
 from astropy.io import fits
@@ -59,7 +60,6 @@ style_sheet = '''
            name_font_size=style['name']['font-size'],
            name_font_family=style['name']['font-family'],
            name_fill=style['name']['fill'])
-# TBD: desc
 for i, desc in enumerate(style['desc']):
     style_sheet +='''text.desc{i} {{
       font-family: "{font_family}";
@@ -73,7 +73,21 @@ for i, desc in enumerate(style['desc']):
 
 drw = svgwrite.Drawing(out_file, size=(image_w, image_h))
 drw.add(drw.style(style_sheet))
-drw.add(drw.image(image_file))
+
+#TBD: select embed or link by option.
+embed_image = True
+if embed_image:
+    with open(image_file, 'rb') as f:
+        mime = ''
+        if image_file.upper().endswith('.JPG'):
+            mime = 'image/jpeg'
+        elif image_file.upper().endswith('.PNG'):
+            mime = 'image/png'
+        image_data = 'data:' + mime + ';base64,'
+        image_data += base64.standard_b64encode(f.read()).decode()
+    drw.add(drw.image(image_data))
+else:
+    drw.add(drw.image(image_file))
 
 for gal in galaxies['galaxies']:
     sky = SkyCoord(ra=float(gal['al2000']), dec=float(gal['de2000']),
