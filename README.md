@@ -157,7 +157,22 @@ Anaconda 環境の場合 astropy は標準で入っています。svgwrite は '
 ./leda-votable-to-galaxy.py -m 17.5 votable.xml > galaxy-17_5.json
 ```
 
-以下は `-d` オプションを追加して 17.5 等より明るい銀河のみを、距離情報(Gly (ギガ光年)表記の光路距離)を説明文として付加した銀河情報ファイルに出力しています。
+`-m` オプションを指定した場合、`votable.xml` に等級のデータがない天体があると以下のようにエラーになります。
+
+```
+./leda-votable-to-galaxy.py -m 17 -d -j M83-votable.xml
+no magnitude data for '6dFJ1335298-295039'.
+```
+
+等級データのない天体をスキップする場合は `-s` オプションを、等級データのない天体を出力に含める場合は `-i` オプションを指定してください。
+
+```
+./leda-votable-to-galaxy.py -m 17 -s -d -j M83-votable.xml
+```
+
+### 距離情報を含んだ銀河情報ファイルの生成
+
+`leda-votable-to-galaxy.py` で `-d` オプションを指定すると距離情報(Gly (ギガ光年)表記の光路距離)を説明文として付加した銀河情報ファイルに出力します。以下は 17.5 等より明るい銀河のみを、距離情報付きで出力する例です。
 
 ```
 ./leda-votable-to-galaxy.py -m 17.5 -d votable.xml > galaxy-17_5-d.json

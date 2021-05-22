@@ -12,7 +12,13 @@ def float_or_none(v):
 usage = "Usage: %prog [options] votable_xml_file"
 optparser = OptionParser(usage=usage)
 optparser.add_option("-m", "--max-magnitude", dest="max_mag", type='float',
-                     help="maximum total magnitude(it)", metavar="MAG")
+                     help="maximum total magnitude(it,vt,bt)", metavar="MAG")
+optparser.add_option("-s", "--skip-error", dest="skip_error",
+                     action="store_true", default=False,
+                     help="skip objects on error.")
+optparser.add_option("-i", "--ignore-error", dest="ignore_error",
+                     action="store_true", default=False,
+                     help="ignore error and process objects.")
 optparser.add_option("-d", "--calc-distance", dest="calc_distance",
                      action='store_true', default=False,
                      help="calicurate light-travel distance.")
@@ -39,6 +45,16 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
     if options.max_mag:
         if it == None:
             it = rec['vt']
+        if it == None:
+            it = rec['bt']
+        if it == None:
+            if options.skip_error:
+                continue
+            elif options.ignore_error:
+                it = -100.0
+            else:
+                print("no magnitude data for '{}'.".format(rec['objname']))
+                exit()
         if float(it) > options.max_mag:
             continue
     ltd_Gly = None
