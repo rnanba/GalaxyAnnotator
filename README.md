@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.5
+# Galaxy Annotator v0.6
 
 ## 概要
 
