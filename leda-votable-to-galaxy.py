@@ -1,38 +1,60 @@
 #!/usr/bin/env python
 import sys
-import json
-import math
-import xml.etree.ElementTree as et
-from optparse import OptionParser
-from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
+from argparse import ArgumentParser
 
 def float_or_none(v):
     return float(v) if v else None
 
-usage = "Usage: %prog [options] votable_xml_file"
-optparser = OptionParser(usage=usage)
-optparser.add_option("-m", "--max-magnitude", dest="max_mag", type='float',
-                     help="maximum total magnitude(it,vt,bt)", metavar="MAG")
-optparser.add_option("-s", "--skip-error", dest="skip_error",
-                     action="store_true", default=False,
-                     help="skip objects on error.")
-optparser.add_option("-i", "--ignore-error", dest="ignore_error",
-                     action="store_true", default=False,
-                     help="ignore error and process objects.")
-optparser.add_option("-d", "--calc-distance", dest="calc_distance",
-                     action='store_true', default=False,
-                     help="calicurate light-travel distance.")
-optparser.add_option("-j", "--japanese", dest="japanese",
-                     action='store_true', default=False,
-                     help="distance in Japanese.")
-(options, args) = optparser.parse_args(sys.argv)
+argparser = ArgumentParser(description='Convert votable.xml to galaxies.json '\
+                           "for 'galaxy-annotator.py'.")
+argparser.add_argument('votable_xml', metavar='input_votable.xml',
+                       help="input file (data of galaxies from HyperLeda in '\
+                       'VOTABLE format).")
+argparser.add_argument('galaxies_json', metavar='output_galaxies.json', nargs='?',
+                       help="output file (annotation data for "\
+                       " 'galaxy-annotator.py'). if omitted, output to stndard "\
+                       "output.")
+argparser.add_argument("-f", "--force-overwrite", action="store_true",
+                       help="force overwriting to output file.")
+argparser.add_argument("-m", "--max-magnitude", dest="max_mag", type=float,
+                       help="maximum total magnitude(it,vt,bt)", metavar="MAG")
+argparser.add_argument("-s", "--skip-error", dest="skip_error",
+                       action="store_true", default=False,
+                       help="skip objects on error.")
+argparser.add_argument("-i", "--ignore-error", dest="ignore_error",
+                       action="store_true", default=False,
+                       help="ignore error and process objects.")
+argparser.add_argument("-d", "--calc-distance", dest="calc_distance",
+                       action='store_true', default=False,
+                       help="calcurate light-travel distance and output.")
+argparser.add_argument("-j", "--japanese", dest="japanese",
+                       action='store_true', default=False,
+                       help="output distance in Japanese.")
+args = argparser.parse_args()
+if not args.votable_xml:
+    argparser.print_help(sys.stderr)
+    exit(1)
+if args.galaxies_json:
+    import os.path
+    if (not args.force_overwrite) and os.path.exists(args.galaxies_json):
+        input = input("output file '" + args.galaxies_json +
+                      "' exists. overwrite? > ")
+        if input.upper() != 'YES':
+            print('bye.')
+            sys.exit()
 
-if options.calc_distance:
+import json
+import math
+import xml.etree.ElementTree as et
+from argparse import ArgumentParser
+from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
+
+if args.calc_distance:
     from astropy import units as u
     from astropy.cosmology import LambdaCDM
     cosmo = LambdaCDM(H0=67.3, Om0=0.315, Ode0=0.685)
 
-root = et.parse(args[1]).getroot()
+root = et.parse(args.votable_xml).getroot()
 fields = list(map(lambda f: f.attrib['name'],
                   root.findall('./RESOURCE/TABLE/FIELD')))
 galaxies = []
@@ -42,23 +64,23 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
     for i, f in enumerate(tr.findall('./TD')):
         rec[fields[i]] = f.text
     it = rec['it']
-    if options.max_mag:
+    if args.max_mag:
         if it == None:
             it = rec['vt']
         if it == None:
             it = rec['bt']
         if it == None:
-            if options.skip_error:
+            if args.skip_error:
                 continue
-            elif options.ignore_error:
+            elif args.ignore_error:
                 it = -100.0
             else:
                 print("no magnitude data for '{}'.".format(rec['objname']))
                 exit()
-        if float(it) > options.max_mag:
+        if float(it) > args.max_mag:
             continue
     ltd_Gly = None
-    if options.calc_distance and rec['v']:
+    if args.calc_distance and rec['v']:
         z = [ float(rec['v']) / 299792.458 ]
         d = cosmo.lookback_distance(z)
         ltd_Gly = d[0].to(u.lyr).value / 1000000000.0
@@ -76,7 +98,7 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
         if int(man) >= 100:
             ltd_ja_str += str(math.floor(man)) + '万'
         ltd_ja_str += '光年'
-        if options.japanese:
+        if args.japanese:
             descs.append(ltd_ja_str)
         else:
             descs.append(ltd_en_str)
@@ -97,5 +119,9 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
         "logr25": float_or_none(rec['logr25']),
         "descs": descs
     })
-print(json.dumps({ "galaxies": galaxies }, indent=2))
-
+output = json.dumps({ "galaxies": galaxies }, indent=2, ensure_ascii=False)
+if args.galaxies_json:
+    with open(args.galaxies_json, 'w', encoding='utf-8') as out:
+        out.write(output)
+else:
+    print(output)

@@ -1,5 +1,30 @@
 #!/usr/bin/env python
 import sys
+from argparse import ArgumentParser
+
+argparser = ArgumentParser(description='Get data of galaxies in the '\
+                           'field of view from HyperLeda.')
+argparser.add_argument('wcs_fits', metavar='input_wcs.fits',
+                       help="input file (the 'wcs.fits' file output by '\
+                       'astrometry.net).")
+argparser.add_argument('votable_xml', metavar='output_votable.xml', nargs='?',
+                       help="output file (data of galaxies from HyperLeda in '\
+                       'VOTABLE format). if omitted, output to stndard output.")
+argparser.add_argument("-f", "--force-overwrite", action="store_true",
+                       help="force overwriting to output file.")
+args = argparser.parse_args()
+if not args.wcs_fits:
+    argparser.print_help(sys.stderr)
+    exit(1)
+if args.votable_xml:
+    import os.path
+    if (not args.force_overwrite) and os.path.exists(args.votable_xml):
+        input = input("output file '" + args.votable_xml +
+                      "' exists. overwrite? > ")
+        if input.upper() != 'YES':
+            print('bye.')
+            sys.exit()
+
 import json
 import urllib.request
 from astropy import units as u
@@ -7,9 +32,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 
-wcs_fits = sys.argv[1]
-
-hdu = fits.open(wcs_fits)[0]
+hdu = fits.open(args.wcs_fits)[0]
 w = WCS(hdu.header, fix=False)
 image_w = hdu.header['IMAGEW']
 image_h = hdu.header['IMAGEH']
@@ -45,5 +68,8 @@ query = urllib.parse.urlencode({
 })
 req = urllib.request.Request("{leda}?{query}".format(leda=leda, query=query))
 with urllib.request.urlopen(req) as res:
-    sys.stdout.buffer.write(res.read())
-
+    if args.votable_xml:
+        with open(args.votable_xml, 'wb') as out:
+            out.write(res.read())
+    else:
+        sys.stdout.buffer.write(res.read())
