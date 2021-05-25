@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.6
+# Galaxy Annotator v0.7(dev)
 
 ## 概要
 
@@ -42,9 +42,26 @@ Anaconda 環境の場合 astropy は標準で入っています。svgwrite は '
 
 出力されるSVG画像には元の画像(第4引数でしていしたもの)が埋め込まれます。SVGを扱うツールによっては元の画像が表示されない場合があります。
 
-- GIMP 2.8, Photoshop, eog (GNOMEの画像ビューア)では元画像が表示されませんでした。
-- Firefox, Chrome, Edge (Chromium版)では正しく表示されました。
 - Inkscape では正しく表示でき、編集可能です。
+- Firefox, Chrome, Edge (Chromium版), PixInsight では正しく表示されました。
+- PixInsight でも正しく表示できるようです。
+- GIMP 2.8, Photoshop, eog (GNOMEの画像ビューア)では元画像が表示されませんでした。
+
+## ラスター画像(PNG)への変換
+
+Inkscape で PNG にエクスポートできます。コマンドラインで変換も可能です。
+
+```
+inkscape out.svg -o out.png
+```
+
+Inkscape 以外のツールについては以下のような状況です。
+
+- cairosvg ではアノテーションのみの画像となって埋め込み画像が展開されませんでした。フォントは正常なようです。
+- ImageMagick の convert コマンドではアノテーションが一切描画されず埋め込み画像しか出力されませんでした。
+- SVGtoPNG (オンラインサービス https://svgtopng.com/ja/) では埋め込み画像が展開されませんでした。またサービス側にないフォントは使えません。
+
+良いツール、または Python から使えるライブラリがあれば教えてください。
 
 ## 銀河データファイル
 
