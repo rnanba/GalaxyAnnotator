@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.7(dev)
+# Galaxy Annotator v0.7
 
 ## 概要
 
@@ -214,6 +214,16 @@ python ./leda-votable-to-galaxy.py -m 17.5 -d -j votable.xml galaxies-17_5-d-ja.
 ```
 
 距離情報(光路距離)は赤方偏移で測定された視線速度データを元に算出しています。比較的近距離の銀河については誤差が大きい場合があります。宇宙モデルとしてはΛ-CDMモデルを、宇宙論パラメータとしては H<sub>0</sub> = 67.3 km/s/Mpc、Ω<sub>m</sub> = 0.315、Ω<sub>Λ</sub> = 0.685 を使用しています(これらは国立天文台が一般向けに遠方天体の距離に言及する際に使用しているものです)。
+
+## 更新履歴
+
+- v0.7: Windows 環境への対応
+  - Windows の Anaconda 環境で動作するようにした。
+  - fixed: Windows の Anaconda 環境(PowerShell)でリダイレクトで保存したファイルの文字コードがUTF-8にならない #4
+  - fixed: 日本語Windows環境で galaxy-annotator.py がJSON読み込みエラー #5
+- v0.6: bug fix
+  - fixed: leda-votable-to-galaxy.py で -m オプションを指定すると TypeError: float() argument must be a string or a number, not 'NoneType' #1
+- v0.5: 最初のリリース
 
 ## 告知、開発状況等
 
