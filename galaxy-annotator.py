@@ -3,12 +3,6 @@ import sys
 import os.path
 import math
 import json
-import base64
-import svgwrite
-from astropy import units as u
-from astropy.io import fits
-from astropy.wcs import WCS
-from astropy.coordinates import SkyCoord
 
 galaxies_json = sys.argv[1]
 style_json = sys.argv[2]
@@ -16,9 +10,9 @@ wcs_fits = sys.argv[3]
 image_file = sys.argv[4]
 out_file = sys.argv[5]
 
-with open(galaxies_json, 'r') as f:
+with open(galaxies_json, 'r', encoding='utf-8') as f:
     galaxies = json.load(f)
-with open(style_json, 'r') as f:
+with open(style_json, 'r', encoding='utf-8') as f:
     style = json.load(f)
 
 if out_file and os.path.exists(out_file):
@@ -26,6 +20,13 @@ if out_file and os.path.exists(out_file):
     if input.upper() != 'YES':
         print('bye.')
         sys.exit()
+
+import base64
+import svgwrite
+from astropy import units as u
+from astropy.io import fits
+from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
 
 hdu = fits.open(wcs_fits)[0]
 w = WCS(hdu.header, fix=False)
