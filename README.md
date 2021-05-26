@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.8(dev)
+# Galaxy Annotator v0.8
 
 ## 概要
 
@@ -29,14 +29,16 @@ Anaconda 環境の場合 astropy は標準で入っています。svgwrite は '
 
 例:
 ```
-python ./galaxy-annotator.py sample-galaxies.json sample-style.json test-data/test-wcs.fits test-data/test-in.jpg out.svg
+python galaxy-annotator.py sample-galaxies.json sample-style.json test-data/test-wcs.fits test-data/test-in.jpg out.svg
 ```
 
 - `sample-galaxies.json`: 銀河データファイルです。
 - `sample-style.json`: スタイル設定ファイルです。
-- `test-data/test-wcs.fits`: `test-data/test-in.jpg` を Astrometry.net でプレートソルブした際に生成された 'wcs.fits' です。
+- `test-data/test-wcs.fits`: `test-data/test-in.jpg` を Astrometry.net でプレートソルブした際に生成された `wcs.fits` です。
 - `test-data/test-in.jpg`: Astrometry.net に入力した元画像ファイルです。
 - `out.svg`: 出力先のSVGファイルです。
+
+Web ではなくローカルにインストールした astrometry.net の `solve-field` コマンドでプレートソルブした場合は、拡張子 `.wcs` の出力ファイル(中身はFITS形式です)を第3引数に指定してください。
 
 出力先のSVGファイルが既に存在する場合は以下のような上書き警告のプロンプトを表示します。
 
@@ -161,7 +163,7 @@ Inkscape 以外のツールについては以下のような状況です。
 以下は `leda-get-votable.py` を使って `wcs.fits` から画像の写野を読み取ってその範囲に存在する銀河のデータを HyperLeda から取得する例です(現在はミラーサイトを使うようにしています)。
 
 ```
-python ./leda-get-votable.py test-data/test-wcs.fits votable.xml
+python leda-get-votable.py test-data/test-wcs.fits votable.xml
 ```
 
 第1引数には Astrometry.net の出力した `wcs.fits` を指定します。結果は第2引数で指定した `votable.xml` に保存されます。第2引数を省略した場合は標準出力に表示されます。
@@ -173,7 +175,7 @@ python ./leda-get-votable.py test-data/test-wcs.fits votable.xml
 以下は `leda-votable-to-galaxy.py` を使って、上で取得した `votable.xml` から銀河情報ファイルを生成する例です。
 
 ```
-python ./leda-votable-to-galaxy.py votable.xml galaxies.json
+python leda-votable-to-galaxy.py votable.xml galaxies.json
 ```
 
 結果は第2引数で指定した `galaxies.json` に保存されます。第2引数を省略した場合は標準出力に表示されます。
@@ -183,20 +185,20 @@ python ./leda-votable-to-galaxy.py votable.xml galaxies.json
 以下は `-m` オプションを指定して 17.5 等より明るい銀河のみを銀河情報ファイルに出力しています。
 
 ```
-python ./leda-votable-to-galaxy.py -m 17.5 votable.xml galaxies-17_5.json
+python leda-votable-to-galaxy.py -m 17.5 votable.xml galaxies-17_5.json
 ```
 
 `-m` オプションを指定した場合、`votable.xml` に等級のデータがない天体があると以下のようにエラーになります。
 
 ```
-python ./leda-votable-to-galaxy.py -m 17 -d -j M83-votable.xml M83-galaxies.json
+python leda-votable-to-galaxy.py -m 17 -d -j M83-votable.xml M83-galaxies.json
 no magnitude data for '6dFJ1335298-295039'.
 ```
 
 等級データのない天体をスキップする場合は `-s` オプションを、等級データのない天体を出力に含める場合は `-i` オプションを指定してください。
 
 ```
-python ./leda-votable-to-galaxy.py -m 17 -s -d -j M83-votable.xml M83-galaxies.json
+python leda-votable-to-galaxy.py -m 17 -s -d -j M83-votable.xml M83-galaxies.json
 ```
 
 ### 距離情報を含んだ銀河情報ファイルの生成
@@ -204,20 +206,44 @@ python ./leda-votable-to-galaxy.py -m 17 -s -d -j M83-votable.xml M83-galaxies.j
 `leda-votable-to-galaxy.py` で `-d` オプションを指定すると距離情報(Gly (ギガ光年)表記の光路距離)を説明文として付加した銀河情報ファイルに出力します。以下は 17.5 等より明るい銀河のみを、距離情報付きで出力する例です。
 
 ```
-python ./leda-votable-to-galaxy.py -m 17.5 -d votable.xml galaxies-17_5-d.json
+python leda-votable-to-galaxy.py -m 17.5 -d votable.xml galaxies-17_5-d.json
 ```
 
 以下はさらに `-j` オプションを追加して距離情報を日本語表記(光年)で出力する例です。
 
 ```
-python ./leda-votable-to-galaxy.py -m 17.5 -d -j votable.xml galaxies-17_5-d-ja.json
+python leda-votable-to-galaxy.py -m 17.5 -d -j votable.xml galaxies-17_5-d-ja.json
 ```
 
-距離情報(光路距離)は赤方偏移で測定された視線速度データを元に算出しています。比較的近距離の銀河については誤差が大きい場合があります。宇宙モデルとしてはΛ-CDMモデルを、宇宙論パラメータとしては H<sub>0</sub> = 67.3 km/s/Mpc、Ω<sub>m</sub> = 0.315、Ω<sub>Λ</sub> = 0.685 を使用しています(これらは国立天文台が一般向けに遠方天体の距離に言及する際に使用しているものです)。
+距離は有効桁数(デフォルトで3桁)の一つ下の桁を四捨五入した値で出力します。`-p` オプションで任意の有効桁数を指定できます。以下は4桁にする例です。
+
+```
+python leda-votable-to-galaxy.py -m 17.5 -d -j -p 4 votable.xml galaxies-17_5-d-ja-p4.json
+```
+
+### 距離情報の「光年」の意味について
+
+距離情報として出力される値は「光路距離」です。光路距離は、天体から発した光が X 年かかって現在の地球に届いた場合の距離を X 光年とするもので、「光年」の一般的な定義の一つです。光が届くまでの間に宇宙そのものが膨張を続けているため、天体から光が発した時点での天体と地球の間の距離や、今現在の時点での天体と地球の間の距離とは異なる値になることに注意してください。
+
+赤方偏移とは独立に測定された「光度距離」(光の明るさが距離の2乗に反比例して暗くなるものとして定義した距離)のデータのある近距離の銀河についてはそのデータ(mod0)を光路距離に変換したものを、光度距離データのない遠方の銀河については赤方偏移で測定された視線速度データ(v)を元に光路距離を算出したものを出力しています。
+
+光路距離の計算には、宇宙モデルとしてはΛ-CDMモデルを、宇宙論パラメータとしては H<sub>0</sub> = 67.3 km/s/Mpc、Ω<sub>m</sub> = 0.315、Ω<sub>Λ</sub> = 0.685 を使用しています(これらは国立天文台が一般向けに遠方天体の距離に言及する際に使用しているものです)。
 
 ## 更新履歴
 
-- v0.8: TBD
+- v0.8: 不具合修正, 距離情報の精度向上
+  - fixed: 100万光年未満の銀河の距離が「光年」または「0.000 Gly」になる #7
+  - leda-votable-to-galaxy.py の仕様変更:
+    - 近距離の銀河の距離の計算方法を改善(fixed #6)
+      - 赤方偏移以外の方法で測定された距離情報(mod0)がある場合はそれを利
+        用するようにしました。
+      - v0.7 以前と同じ計算方法にするには、互換性オプション
+        `--distance-calculation-compatibility` を指定します。
+    - leda-votable-to-galaxy.py: 距離の有効桁数を固定するようにしました。
+      - 有効桁数を指定する `-p` オプションを追加。
+      - v0.7 以前と同じ有効桁の扱い(遠い銀河でも100万光年の桁まで出す)
+        を再現するには、互換性オプション
+        `--distance-precision-compatibility` を指定します。
 - v0.7: Windows 環境への対応
   - Windows の Anaconda 環境で動作するようにした。
   - fixed: Windows の Anaconda 環境(PowerShell)でリダイレクトで保存したファイルの文字コードがUTF-8にならない #4
