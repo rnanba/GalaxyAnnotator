@@ -26,10 +26,23 @@ argparser.add_argument("-i", "--ignore-error", dest="ignore_error",
                        help="ignore error and process objects.")
 argparser.add_argument("-d", "--calc-distance", dest="calc_distance",
                        action='store_true', default=False,
-                       help="calcurate light-travel distance and output.")
+                       help="calculate light-travel distance and output.")
 argparser.add_argument("-j", "--japanese", dest="japanese",
                        action='store_true', default=False,
                        help="output distance in Japanese.")
+argparser.add_argument("-p", "--distance-precision", dest="distance_precision",
+                       type=int, default=3, metavar='PREC',
+                       help="precision of distance.")
+argparser.add_argument("--distance-precision-compatibility",
+                       dest="compat_distance_precision",
+                       action='store_true', default=False,
+                       help="compatibility option for distance precision "\
+                       "of v0.7 or earlier.")
+argparser.add_argument("--distance-calculation-compatibility",
+                       dest="use_mod0",
+                       action='store_false', default=True,
+                       help="compatibility option for distance calculation "\
+                       "method of v0.7 or erlier.")
 args = argparser.parse_args()
 if not args.votable_xml:
     argparser.print_help(sys.stderr)
@@ -51,7 +64,7 @@ from decimal import Decimal, ROUND_HALF_UP, ROUND_HALF_EVEN
 
 if args.calc_distance:
     from astropy import units as u
-    from astropy.cosmology import LambdaCDM
+    from astropy.cosmology import LambdaCDM, z_at_value
     cosmo = LambdaCDM(H0=67.3, Om0=0.315, Ode0=0.685)
 
 root = et.parse(args.votable_xml).getroot()
@@ -79,29 +92,39 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
                 exit()
         if float(it) > args.max_mag:
             continue
-    ltd_Gly = None
-    if args.calc_distance and rec['v']:
-        z = [ float(rec['v']) / 299792.458 ]
-        d = cosmo.lookback_distance(z)
-        ltd_Gly = d[0].to(u.lyr).value / 1000000000.0
-        ltd_en_str = str(Decimal(ltd_Gly).quantize(Decimal('0.001'),
-                                                   rounding=ROUND_HALF_UP))
-        ltd_en_str += ' Gly'
-        # japanese
-        ltd_oku_kounen = ltd_Gly * 10
-        ltd_ja_str = ''
-        oku = math.floor(ltd_oku_kounen)
-        if oku > 0:
-            ltd_ja_str += str(oku) + '億'
-        man = 10000 * Decimal(str(ltd_oku_kounen - oku)).quantize(Decimal('0.01'),
-                                                          rounding=ROUND_HALF_UP)
-        if int(man) >= 100:
-            ltd_ja_str += str(math.floor(man)) + '万'
-        ltd_ja_str += '光年'
-        if args.japanese:
-            descs.append(ltd_ja_str)
-        else:
-            descs.append(ltd_en_str)
+    if args.calc_distance:
+        z = None
+        if args.use_mod0 and rec['mod0']:
+            mod0 = float(rec['mod0'])
+            ld = (10 ** (0.2 * mod0 - 5)) * 1000000 * u.parsec
+            z = z_at_value(cosmo.luminosity_distance, ld)
+        elif rec['v']:
+            z = float(rec['v']) / 299792.458
+        
+        if z != None:
+            d = cosmo.lookback_distance(z)
+            d_str = ''
+            d_ly = d.to(u.lyr).value
+            exp = math.ceil(math.log10(d_ly) - args.distance_precision)
+            if args.compat_distance_precision:
+                # 精度に関わらず最低100万光年までの精度で表示。
+                exp = min(exp, 6)
+            exp_param = Decimal('1E'+str(exp))
+            d_ly_r = Decimal(d_ly).quantize(exp_param, rounding=ROUND_HALF_UP)
+            if args.japanese:
+                oku = math.floor(d_ly_r / 100000000)
+                man = (d_ly_r - oku * 100000000) / 10000
+                if oku > 0:
+                    d_str += str(oku) + '億'
+                    if man > 0:
+                        d_str += str(man) + '万'
+                else:
+                    d_str += str(man) + '万'
+                d_str += '光年'
+            else:
+                d_str = str(d_ly_r / 1000000000) + ' Gly'
+            
+            descs.append(d_str)
 
     name = rec['objname']
     if (not (name.startswith('PGC') or
