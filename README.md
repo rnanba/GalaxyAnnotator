@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.7
+# Galaxy Annotator v0.8(dev)
 
 ## 概要
 
@@ -217,6 +217,7 @@ python ./leda-votable-to-galaxy.py -m 17.5 -d -j votable.xml galaxies-17_5-d-ja.
 
 ## 更新履歴
 
+- v0.8: TBD
 - v0.7: Windows 環境への対応
   - Windows の Anaconda 環境で動作するようにした。
   - fixed: Windows の Anaconda 環境(PowerShell)でリダイレクトで保存したファイルの文字コードがUTF-8にならない #4
