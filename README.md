@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.8
+# Galaxy Annotator v0.9(dev)
 
 ## 概要
 
@@ -231,6 +231,7 @@ python leda-votable-to-galaxy.py -m 17.5 -d -j -p 4 votable.xml galaxies-17_5-d-
 
 ## 更新履歴
 
+- v0.9: TBD
 - v0.8: 不具合修正, 距離情報の精度向上
   - fixed: 100万光年未満の銀河の距離が「光年」または「0.000 Gly」になる #7
   - leda-votable-to-galaxy.py の仕様変更:
