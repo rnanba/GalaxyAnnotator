@@ -12,9 +12,41 @@ out_file = sys.argv[5]
 
 with open(galaxies_json, 'r', encoding='utf-8') as f:
     galaxies = json.load(f)
-with open(style_json, 'r', encoding='utf-8') as f:
-    style = json.load(f)
 
+style = {
+    'marker': {
+        'fill': 'none',
+        'size': 1.5,
+        'min-r': 15,
+        'min-size': None,
+        'min-size-r': None,
+        'stroke': 'gray',
+        'stroke-width': 1
+    },
+    'name': {
+        'font-size': 40,
+        'fill': 'gray'
+    },
+    'desc': [
+        {
+            'font-size': 40,
+            'fill': 'gray'
+        }
+    ]
+}
+with open(style_json, 'r', encoding='utf-8') as f:
+    in_style = json.load(f)
+    for key in iter(style):
+        if type(style[key]) == dict:
+            if key in in_style:
+                style[key].update(in_style[key]) 
+        elif type(style[key]) == list:
+            for i, e in enumerate(in_style[key]):
+                if len(style[key]) > i:
+                    style[key][i].update(e)
+                else:
+                    style[key].append(e)
+                    
 if out_file and os.path.exists(out_file):
     input = input("output file '" + out_file + "' exists. overwrite? > ")
     if input.upper() != 'YES':
@@ -42,7 +74,9 @@ print('tilt=', image_tilt)
 scales = w.proj_plane_pixel_scales()
 px_scale = (scales[0].to_value(unit=u.deg) + scales[1].to_value(unit=u.deg)) / 2
 print('scale=', px_scale)
+
 marker_size = float(style['marker']['size'])
+# TODO: style.json に書いた任意のSVGスタイル属性を反映させる
 style_sheet = '''
     ellipse.marker {{
       fill: none;
@@ -104,10 +138,20 @@ for gal in galaxies['galaxies']:
     gal_pa = float(gal['pa']) if gal['pa'] else 0.0
     gal_d = 10 ** float(gal['logd25']) / 10 / 60 if gal['logd25'] else None
     gal_r = 10 ** float(gal['logr25']) if gal['logr25'] else 1.0
+    
     marker_rot = -1.0 * (gal_pa - image_tilt)
-    min_r = style['marker']['min-r']
-    marker_ry = gal_d * marker_size / 2 / px_scale if gal_d else min_r
-    marker_ry = max(marker_ry, min_r)
+    marker_min_r = style['marker']['min-r']
+    marker_min_size_r = style['marker']['min-size-r'] or (marker_min_r + 1)
+    marker_min_size = style['marker']['min-size'] or marker_size
+    
+    if gal_d:
+        gal_ry = gal_d / 2 / px_scale
+        sz = (gal_ry - marker_min_r) * (marker_min_size - marker_size) / \
+             (marker_min_size_r - marker_min_r) + marker_size
+        marker_ry = max(gal_ry * max(sz, marker_min_size), marker_min_r)
+    else:
+        marker_ry = marker_min_r
+
     marker_rx = marker_ry / gal_r
     print("  d={d}".format(d=gal_d))
     print("  marker: ({rx} x {ry}), rot={rot}".format(rx=marker_rx,
