@@ -3,6 +3,7 @@ import sys
 import os.path
 import math
 import json
+import copy
 
 galaxies_json = sys.argv[1]
 style_json = sys.argv[2]
@@ -27,6 +28,10 @@ non_svg_marker_style_defaults = {
     'label-position': 'top-right',
     'label-vertical-align': 'baseline'
 }
+non_svg_desc_style_defaults = {
+    'line-height': 1
+}
+
 style = {
     'marker': {
         'fill': 'none',
@@ -45,23 +50,33 @@ style = {
     ]
 }
 style['marker'].update(non_svg_marker_style_defaults)
-with open(style_json, 'r', encoding='utf-8') as f:
-    in_style = json.load(f)
-    for key in iter(style):
-        if type(style[key]) == dict:
-            if key in in_style:
-                style[key].update(in_style[key]) 
-        elif type(style[key]) == list:
-            for i, e in enumerate(in_style[key]):
-                if len(style[key]) > i:
-                    style[key][i].update(e)
+
+def update_style(s, s_diff):
+    for key in iter(s):
+        if not key in s_diff:
+            continue
+        v = s[key]
+        if type(v) == dict:
+            v.update(s_diff[key]) 
+        elif type(v) == list:
+            for i, e in enumerate(s_diff[key]):
+                if len(v) > i:
+                    v[i].update(e)
                 else:
-                    style[key].append(e)
-                    
+                    v.append(e)
+        else:
+            s[key] = s_diff[key]
+    for ds in s['desc']:
+        for k in non_svg_desc_style_defaults:
+            if not(k in ds):
+                ds[k] = non_svg_desc_style_defaults[k]
+
 def s_to_ss(selector, s):
-    ss = selector + ' {\n'
+    ss = selector + ' {\n' if selector else ''
     for prop in s:
         if prop in non_svg_marker_style_defaults:
+            continue
+        if prop in non_svg_desc_style_defaults:
             continue
         v = s[prop]
         ss += "  " + prop + ": "
@@ -71,9 +86,13 @@ def s_to_ss(selector, s):
             ss += '\"{}\"'.format(v)
         else:
             ss += str(v)
-        ss += ';\n'
-    ss += '}\n'
+        ss += ';\n' if selector else ';'
+    if selector:
+        ss += '}\n'
     return ss
+
+with open(style_json, 'r', encoding='utf-8') as f:
+    update_style(style, json.load(f))
 
 if not (type(style['name']['font-size']) == int or
         type(style['name']['font-size']) == float):
@@ -120,7 +139,6 @@ scales = w.proj_plane_pixel_scales()
 px_scale = (scales[0].to_value(unit=u.deg) + scales[1].to_value(unit=u.deg)) / 2
 print('scale=', px_scale)
 
-marker_size = float(style['marker']['size'])
 drw = svgwrite.Drawing(out_file, size=(image_w, image_h))
 drw.add(drw.style(style_sheet))
 
@@ -145,6 +163,24 @@ for gal in galaxies['galaxies']:
     x, y = w.world_to_pixel(sky)
     if x < 0 or y < 0 or x > image_w or y > image_h:
         continue
+
+    gal_style = copy.deepcopy(style)
+    marker_ss = None
+    name_ss = None
+    desc_ss = None
+    if 'style' in gal:
+        s = gal['style']
+        update_style(gal_style, s)
+        if 'marker' in s:
+            marker_ss = s_to_ss(None, s['marker'])
+        if 'name' in s:
+            name_ss = s_to_ss(None, s['name'])
+        if 'desc' in s:
+            desc_ss = []
+            for i, desc in enumerate(s['desc']):
+                desc_ss.append(s_to_ss(None, desc))
+
+    marker_size = float(gal_style['marker']['size'])
     
     svg_group = drw.g()
     drw.add(svg_group)
@@ -155,9 +191,9 @@ for gal in galaxies['galaxies']:
     gal_r = 10 ** float(gal['logr25']) if gal['logr25'] else 1.0
     
     marker_rot = -1.0 * (gal_pa - image_tilt)
-    marker_min_r = style['marker']['min-r']
-    marker_min_size_r = style['marker']['min-size-r'] or (marker_min_r + 1)
-    marker_min_size = style['marker']['min-size'] or marker_size
+    marker_min_r = gal_style['marker']['min-r']
+    marker_min_size_r = gal_style['marker']['min-size-r'] or (marker_min_r + 1)
+    marker_min_size = gal_style['marker']['min-size'] or marker_size
     
     if gal_d:
         gal_ry = gal_d / 2 / px_scale
@@ -173,23 +209,37 @@ for gal in galaxies['galaxies']:
                                                       ry=marker_ry,
                                                       rot=marker_rot))
     transform = "rotate({rot}, {x}, {y})".format(rot=marker_rot, x=x, y=y)
-    svg_group.add(drw.ellipse(center=(float(x), float(y)),
-                              r=(marker_rx, marker_ry),
-                              transform=transform, class_='marker'))
+    ellipse = drw.ellipse(center=(float(x), float(y)),
+                          r=(marker_rx, marker_ry),
+                          transform=transform, class_='marker')
+    if marker_ss:
+        ellipse.update({ 'style': marker_ss })
+    svg_group.add(ellipse)
+    
     th = math.radians(marker_rot)
     dx = math.sqrt(marker_rx**2 * math.cos(th)**2 +
                    marker_ry**2 * math.sin(th)**2)
     dy = math.sqrt(marker_rx**2 * math.sin(th)**2 +
                    marker_ry**2 * math.cos(th)**2)
-    name_x = x + dx + float(style['marker']['x-margin'])
-    name_y = y - dy - float(style['marker']['y-margin'])
+    name_x = x + dx + float(gal_style['marker']['x-margin'])
+    name_y = y - dy - float(gal_style['marker']['y-margin'])
     print("  name: ({x}, {y})".format(x=name_x, y=name_y))
-    svg_group.add(drw.text(gal_name, x=[name_x], y=[name_y], class_='name'))
-    desc_x = name_x
-    desc_y = name_y
-    for i, desc in enumerate(gal['descs']):
-        desc_y += float(style['desc'][i]['font-size'])
-        print("  desc[{i}]: ({x}, {y})".format(i=i, x=desc_x, y=desc_y))
-        svg_group.add(drw.text(desc, x=[desc_x], y=[desc_y],
-                               class_='desc'+str(i)))
+    name_text = drw.text(gal_name, x=[name_x], y=[name_y], class_='name')
+    if name_ss:
+        name_text.update({ 'style': name_ss })
+    svg_group.add(name_text)
+    
+    if len(gal['descs']) > 0:
+        desc_x = name_x
+        desc_y = name_y
+        for i, desc in enumerate(gal['descs']):
+            desc_y += gal_style['desc'][i]['font-size'] * \
+                      gal_style['desc'][i]['line-height']
+            print("  desc[{i}]: ({x}, {y})".format(i=i, x=desc_x, y=desc_y))
+            desc_text = drw.text(desc, x=[desc_x], y=[desc_y],
+                                 class_='desc'+str(i))
+            if desc_ss and i < len(desc_ss):
+                desc_text.update({ 'style': desc_ss[i] })
+            svg_group.add(desc_text)
+
 drw.save(pretty=True)
