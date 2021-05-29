@@ -13,13 +13,23 @@ out_file = sys.argv[5]
 with open(galaxies_json, 'r', encoding='utf-8') as f:
     galaxies = json.load(f)
 
+SVG_LENGTH_PROPS = [ 'baseline-shift', 'font-size', 'kerning', 'letter-spacing',
+                     'stroke-dashoffset', 'stroke-width', 'stroke-width',
+                     'word-spacing' ]
+
+non_svg_marker_style_defaults = {
+    'size': 1.5,
+    'min-size': None,
+    'min-r': 15,
+    'min-size-r': None,
+    'x-margin': 4,
+    'y-margin': 0,
+    'label-position': 'top-right',
+    'label-vertical-align': 'baseline'
+}
 style = {
     'marker': {
         'fill': 'none',
-        'size': 1.5,
-        'min-r': 15,
-        'min-size': None,
-        'min-size-r': None,
         'stroke': 'gray',
         'stroke-width': 1
     },
@@ -34,6 +44,7 @@ style = {
         }
     ]
 }
+style['marker'].update(non_svg_marker_style_defaults)
 with open(style_json, 'r', encoding='utf-8') as f:
     in_style = json.load(f)
     for key in iter(style):
@@ -47,6 +58,40 @@ with open(style_json, 'r', encoding='utf-8') as f:
                 else:
                     style[key].append(e)
                     
+def s_to_ss(selector, s):
+    ss = selector + ' {\n'
+    for prop in s:
+        if prop in non_svg_marker_style_defaults:
+            continue
+        v = s[prop]
+        ss += "  " + prop + ": "
+        if (type(v) == int or type(v) == float) and prop in SVG_LENGTH_PROPS:
+            ss += "{}px".format(v)
+        elif type(v) == str and prop == 'font-family':
+            ss += '\"{}\"'.format(v)
+        else:
+            ss += str(v)
+        ss += ';\n'
+    ss += '}\n'
+    return ss
+
+if not (type(style['name']['font-size']) == int or
+        type(style['name']['font-size']) == float):
+    print('{}: ERROR: "font-size" of "name" '\
+          'must be of numeric type.'.format(style_json), file=sys.stderr)
+    sys.exit()
+for i, desc in enumerate(style['desc']):
+    if not (type(desc['font-size']) == int or type(desc['font-size']) == float):
+        print('{}: ERROR: "font-size" of "desc"[{}] must be of '\
+              'numeric type.'.format(style_json, i), file=sys.stderr)
+        sys.exit()
+
+style_sheet = "\n"
+style_sheet += s_to_ss('ellipse.marker', style['marker'])
+style_sheet += s_to_ss('text.name', style['name'])
+for i, desc in enumerate(style['desc']):
+    style_sheet += s_to_ss('text.desc{}'.format(i), desc)
+
 if out_file and os.path.exists(out_file):
     input = input("output file '" + out_file + "' exists. overwrite? > ")
     if input.upper() != 'YES':
@@ -76,36 +121,6 @@ px_scale = (scales[0].to_value(unit=u.deg) + scales[1].to_value(unit=u.deg)) / 2
 print('scale=', px_scale)
 
 marker_size = float(style['marker']['size'])
-# TODO: style.json に書いた任意のSVGスタイル属性を反映させる
-style_sheet = '''
-    ellipse.marker {{
-      fill: none;
-      stroke: {marker_stroke};
-      stroke-opacity: {marker_stroke_opacity};
-      stroke-width: {marker_stroke_width}px;
-    }}
-    text.name {{
-      font-family: "{name_font_family}";
-      font-size: {name_font_size}px;
-      fill: {name_fill};
-    }}
-'''.format(marker_stroke=style['marker']['stroke'],
-           marker_stroke_width=style['marker']['stroke-width'],
-           marker_stroke_opacity=style['marker']['stroke-opacity'],
-           name_font_size=style['name']['font-size'],
-           name_font_family=style['name']['font-family'],
-           name_fill=style['name']['fill'])
-for i, desc in enumerate(style['desc']):
-    style_sheet +='''text.desc{i} {{
-      font-family: "{font_family}";
-      font-size: {font_size}px;
-      fill: {fill};
-    }}
-'''.format(i=i,
-           font_size=desc['font-size'],
-           font_family=desc['font-family'],
-           fill=desc['fill'])
-
 drw = svgwrite.Drawing(out_file, size=(image_w, image_h))
 drw.add(drw.style(style_sheet))
 
