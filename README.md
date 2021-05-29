@@ -68,6 +68,7 @@ inkscape out.svg -o out.png
 Inkscape 以外のツールについては以下のような状況です。
 
 - cairosvg ではアノテーションのみの画像となって埋め込み画像が展開されませんでした。フォントは正常なようです。
+- svglib と reportlab.graphics による変換では renderPM.drawToFile() で Segmentation fault で落ちて出力に失敗しました。
 - ImageMagick の convert コマンドではアノテーションが一切描画されず埋め込み画像しか出力されませんでした。
 - SVGtoPNG (オンラインサービス https://svgtopng.com/ja/) では埋め込み画像が展開されませんでした。またサービス側にないフォントは使えません。
 
