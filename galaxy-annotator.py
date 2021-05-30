@@ -4,6 +4,8 @@ import os.path
 import math
 import json
 import copy
+import re
+from functools import reduce
 
 galaxies_json = sys.argv[1]
 style_json = sys.argv[2]
@@ -26,12 +28,11 @@ non_svg_marker_style_defaults = {
     'x-margin': 4,
     'y-margin': 0,
     'label-position': 'top-right',
-    'label-vertical-align': 'baseline'
+    'label-vertical-align': 'auto'
 }
 non_svg_desc_style_defaults = {
     'line-height': 1
 }
-
 style = {
     'marker': {
         'fill': 'none',
@@ -40,12 +41,14 @@ style = {
     },
     'name': {
         'font-size': 40,
-        'fill': 'gray'
+        'fill': 'gray',
+        'direction': 'ltr'
     },
     'desc': [
         {
             'font-size': 40,
-            'fill': 'gray'
+            'fill': 'gray',
+            'direction': 'ltr'
         }
     ]
 }
@@ -91,6 +94,35 @@ def s_to_ss(selector, s):
         ss += '}\n'
     return ss
 
+POS_RE = re.compile('(top|middle|bottom)-(left|middle|right)')
+def parse_label_position(value, file):
+    res = POS_RE.match(value)
+    if not(res):
+        print('{}: ERROR: "label-position" of "marker" '\
+              'is invalid.'.format(file), file=sys.stderr)
+        sys.exit()
+    else:
+        return [res.group(2), res.group(1)]
+
+def get_label_anchor(xpos):
+    # TBD: label_anchor for rtl language.
+    if xpos == 'left':
+        return 'end'
+    elif xpos == 'right':
+        return 'start'
+    elif xpos == 'middle':
+        return 'middle'
+
+VALIGN_RE = re.compile('(auto|baseline|top|middle|bottom)')
+def parse_label_valign(value, file):
+    res = VALIGN_RE.match(value)
+    if not(res):
+        print('{}: ERROR: "label-vertical-align" of "marker" '\
+              'is invalid.'.format(file), file=sys.stderr)
+        sys.exit()
+    else:
+        return res.group(1)    
+
 with open(style_json, 'r', encoding='utf-8') as f:
     update_style(style, json.load(f))
 
@@ -105,10 +137,19 @@ for i, desc in enumerate(style['desc']):
               'numeric type.'.format(style_json, i), file=sys.stderr)
         sys.exit()
 
+parse_label_valign(style['marker']['label-vertical-align'], style_json)
+def_label_position = style['marker']['label-position']
+def_x_pos, def_y_pos = parse_label_position(def_label_position, style_json)
+def_label_anchor = get_label_anchor(def_x_pos)
+if not('text-anchor' in style['name']):
+    style['name']['text-anchor'] = def_label_anchor
+
 style_sheet = "\n"
 style_sheet += s_to_ss('ellipse.marker', style['marker'])
 style_sheet += s_to_ss('text.name', style['name'])
 for i, desc in enumerate(style['desc']):
+    if not('text-anchor' in desc):
+        desc['text-anchor'] = def_label_anchor
     style_sheet += s_to_ss('text.desc{}'.format(i), desc)
 
 if out_file and os.path.exists(out_file):
@@ -161,26 +202,51 @@ for gal in galaxies['galaxies']:
     sky = SkyCoord(ra=float(gal['al2000']), dec=float(gal['de2000']),
                    unit=(u.hourangle, u.deg))
     x, y = w.world_to_pixel(sky)
+    x, y = float(x), float(y)
     if x < 0 or y < 0 or x > image_w or y > image_h:
         continue
 
+    x_pos = def_x_pos
+    y_pos = def_y_pos
+    
     gal_style = copy.deepcopy(style)
     marker_ss = None
     name_ss = None
     desc_ss = None
     if 'style' in gal:
         s = gal['style']
-        update_style(gal_style, s)
         if 'marker' in s:
+            s_label_position = s['marker']['label-position'] \
+                               if ('label-position' in s['marker']) else None
+            if s_label_position:
+                x_pos, y_pos = parse_label_position(s_label_position, \
+                                                    galaxies_json)
+                label_anchor = get_label_anchor(x_pos)
+                if not('name' in s):
+                    s['name'] = {}
+                if not('desc' in s):
+                    s['desc'] = []
+                n = len(s['desc'])
+                for i, desc in enumerate(gal['descs']):
+                    if i >= n:
+                        s['desc'].append({})
             marker_ss = s_to_ss(None, s['marker'])
         if 'name' in s:
+            if not('text-anchor' in s['name']) and s_label_position:
+                s['name']['text-anchor'] = label_anchor
             name_ss = s_to_ss(None, s['name'])
         if 'desc' in s:
             desc_ss = []
             for i, desc in enumerate(s['desc']):
+                if not('text-anchor' in desc) and s_label_position:
+                    desc['text-anchor'] = label_anchor
                 desc_ss.append(s_to_ss(None, desc))
+        
+        update_style(gal_style, s)
 
     marker_size = float(gal_style['marker']['size'])
+    label_valign = gal_style['marker']['label-vertical-align']
+    parse_label_valign(label_valign, galaxies_json)
     
     svg_group = drw.g()
     drw.add(svg_group)
@@ -221,8 +287,46 @@ for gal in galaxies['galaxies']:
                    marker_ry**2 * math.sin(th)**2)
     dy = math.sqrt(marker_rx**2 * math.sin(th)**2 +
                    marker_ry**2 * math.cos(th)**2)
-    name_x = x + dx + float(gal_style['marker']['x-margin'])
-    name_y = y - dy - float(gal_style['marker']['y-margin'])
+
+    x_margin = float(gal_style['marker']['x-margin'])
+    y_margin = float(gal_style['marker']['y-margin'])
+
+    if x_pos == 'left':
+        name_x = x - dx - x_margin
+    elif x_pos == 'right':
+        name_x = x + dx + x_margin
+    elif x_pos == 'middle':
+        name_x = x
+
+    # y of 'name' baseline 
+    if y_pos == 'top':
+        name_y = y - dy - y_margin
+    elif y_pos == 'bottom':
+        name_y = y + dy + y_margin
+    elif y_pos == 'middle':
+        name_y = y
+
+    if label_valign == 'auto':
+        label_valign = 'baseline'
+        if x_pos == 'middle':
+            if y_pos == 'top':
+                label_valign = 'bottom'
+            elif y_pos == 'bottom':
+                label_valign = 'top'
+    
+    desc_height = reduce(lambda h, desc: \
+                         h + desc['font-size'] * desc['line-height'],\
+                         gal_style['desc'], 0)
+    # print('desc_height:', desc_height)
+    name_height = float(gal_style['name']['font-size'])
+    
+    if label_valign == 'top':
+        name_y += name_height
+    elif label_valign == 'bottom':
+        name_y -= desc_height
+    elif label_valign == 'middle':
+        name_y += name_height - (name_height + desc_height) / 2
+    
     print("  name: ({x}, {y})".format(x=name_x, y=name_y))
     name_text = drw.text(gal_name, x=[name_x], y=[name_y], class_='name')
     if name_ss:
