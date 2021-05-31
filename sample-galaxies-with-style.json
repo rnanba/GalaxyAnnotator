@@ -9,7 +9,17 @@
       "logr25": 0.295,
       "descs": [
         "1440万光年"
-      ]
+      ],
+      "style": {
+        "marker": {
+          "size": 1.1,
+          "label-position": "middle-right",
+          "label-vertical-align": "middle"
+        },
+        "name": {
+          "font-size": 80
+        }
+      }
     },
     {
       "name": "PGC 1651721",

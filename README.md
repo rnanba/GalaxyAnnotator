@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.9(dev)
+# Galaxy Annotator v0.9
 
 ## 概要
 
@@ -46,9 +46,9 @@ Web ではなくローカルにインストールした astrometry.net の `solv
 output file 'out.svg' exists. overwrite? > 
 ```
 
-上書きする場合は `yes` をキャンセルする場合は `no` を入力してください。
+上書きする場合は `yes` をキャンセルする場合は `no` を入力してください。なお、コマンドラインで `-f` オプションを指定すると無警告で上書きします。
 
-マーカーは銀河を囲む楕円形として描画されます。銀河の名前がその右上に描画されます。説明文がある場合は名前の下に描画されます。
+マーカーは銀河を囲む楕円形として描画されます。銀河の名前と説明文がその近くに描画されます。マーカーの色、名前や説明文のフォントや配置などはスタイル設定ファイルで指定できます(後述)。
 
 出力されるSVG画像には元の画像(第4引数でしていしたもの)が埋め込まれます。SVGを扱うツールによっては元の画像が表示されない場合があります。
 
@@ -112,7 +112,60 @@ Inkscape 以外のツールについては以下のような状況です。
 
 `al2000`〜`logr25` は HyperLeda の同名のカラムと同じものです。
 
+上の銀河データファイルと sample-style.json で以下の出力が得られます。
+
+<img src="docs/images/sample.jpg" width="75%">
+
+### 銀河ごとのスタイルの指定
+
+銀河オブジェクト内に設定項目 `style` を記述すると個別の銀河にだけ適用されるスタイルを指定出来ます。以下の例では NGC4826 のマーカーのサイズとラベルの配置と名前のフォントサイズを指定しています。スタイル設定の書式は後述するスタイル設定ファイルと同じです。
+
+```sample-galaxies-with-style.json
+{
+  "galaxies": [
+    {
+      "name": "NGC4826",
+      "al2000": 12.9454673,
+      "de2000": 21.6821044,
+      "pa": 114.0,
+      "logd25": 2.022,
+      "logr25": 0.295,
+      "descs": [
+        "1440万光年"
+      ],
+      "style": {
+        "marker": {
+          "size": 1.1,
+          "label-position": "middle-right",
+          "label-vertical-align": "middle"
+        },
+        "name": {
+          "font-size": 80
+        }
+      }
+    },
+    {
+      "name": "PGC 1651721",
+      "al2000": 12.9409511,
+      "de2000": 21.5214739,
+      "pa": 36.24,
+      "logd25": 0.549,
+      "logr25":  0.14,
+      "descs": [
+        "10億4200万光年"
+      ]
+    }
+  ]
+}
+```
+
+上の銀河データファイルと sample-style.json で以下の出力が得られます。
+
+<img src="docs/images/sample-with-style.jpg" width="75%">
+
 ## スタイル設定ファイル
+
+スタイル設定ファイル(JSON)の書式は以下の通りです。
 
 ```sample-style.json
 {
@@ -161,9 +214,17 @@ Inkscape 以外のツールについては以下のような状況です。
   - `font-size`: フォントサイズです。単位はピクセルです。
   - `fill`: 文字の色です。書式はCSSと同じです。
 
+### ラベルの配置について
+
+マーカーに対するラベルの配置方法は設定項目 `x-margin`, `y-margin`, `label-position`, `label-vertical-align` で指定できます。詳細は、
+
+- [ラベルのレイアウト](docs/label-layout.md)
+
+を参照してください。
+
 ### SVG のスタイルプロパティについて
 
-スタイルプロパティを指定できるオブジェクトには、任意の SVG 1.1 のスタイルプロパティを指定することができます。SVG 1.1 のスタイルプロパティ名を名前、スタイルプロパティ値を値として指定します。値は通常文字列型(二重引用符でくくった値)として指定します。原則としてエラーチェックはせず、そのままSVGファイルのスタイルシートに出力します。
+スタイルプロパティを指定できるオブジェクトには、任意の SVG 1.1 のスタイルプロパティを指定することができます。[SVG 1.1](https://triple-underscore.github.io/SVG11/index.html) のスタイルプロパティ名を名前、スタイルプロパティ値を値として指定します。値は通常文字列型(二重引用符でくくった値)として指定します。原則としてエラーチェックはせず、そのままSVGファイルのスタイルシートに出力します。
 
 SVG 1.1 で値に長さ(\<length\>)を取りうるプロパティの値については、JSONの数値型で指定された値(例: 123)は px (ピクセル)単位の値(例: 123px)として出力します。JSONの文字列型で指定された値(例: '123')は単位識別子なしの値(例: 123)として出力するので注意してください。
 
@@ -254,7 +315,7 @@ python leda-votable-to-galaxy.py -m 17.5 -d -j -p 4 votable.xml galaxies-17_5-d-
 
 ## 更新履歴
 
-- v0.9: TBD
+- v0.9: スタイル設定機能の強化
   - fixed: 大きな銀河のマーカーのサイズが大きすぎる #8
     - style.json の `marker` に `min-size` プロパティと `min-size-r`
       プロパティを追加した。
@@ -272,6 +333,28 @@ python leda-votable-to-galaxy.py -m 17.5 -d -j -p 4 votable.xml galaxies-17_5-d-
       - font-size は数値型以外エラー。
       - font プロパティのフォントサイズ指定はラベルのレイアウトに反映
         されない(制限)
+  - fixed: 銀河毎に個別にスタイルを指定したい #9
+    - 銀河オブジェクトの "style" プロパティ内にスタイル設定を指定すると個
+      別の図形の style 属性としてスタイルプロパティを設定するようにした。
+  - desc のスタイルプロパティに line-height を追加した。複数行 desc を
+    描画するとフォントによって行間が詰まりすぎるため。
+  - fixed 文字の表示位置を変更したい #3
+    - marker のスタイルに label-position = ( top-left | top-middle |
+      top-right | middle-left | middle-middle | middle-right | 
+      bottom-left | bottom-middle | bottom-right ) を追加。マーカーを
+      囲む矩形のどの点(頂点、辺の中央、中心点)を基準にラベルを配置する
+      かを指定するもの。
+      - 文字が重ならないように文字列は *-left は右寄せ、*-right は左寄
+      	せ。また、*-middle は中央寄せ。
+    - marker のスタイルに label-vertical-align = ( auto | baseline |
+      top | middle | bottom ) を追加。ラベルの矩形(name, descs を囲む
+      矩形)のどの位置を label-position で指定した基準点に合わせるかを
+      指定するもの。
+      - auto では top-middle, bottom-middle で文字がマーカーに重ならな
+      	いように、それぞれ bottom, top としてレイアウトする(他は
+      	baseline)。
+    - 従来のラベルの配置は label-position = top-right,
+      label-vertical-align' = auto (または baseline)。
 - v0.8: 不具合修正, 距離情報の精度向上
   - fixed: 100万光年未満の銀河の距離が「光年」または「0.000 Gly」になる #7
   - leda-votable-to-galaxy.py の仕様変更:
@@ -300,3 +383,11 @@ Galaxy Annotator に関する告知や開発状況については https://rna.ha
 ## ライセンス
 
 MIT ライセンスです。
+
+Copyright 2021 Ryosuke Nanba \<<https://github.com/rnanba>\>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
