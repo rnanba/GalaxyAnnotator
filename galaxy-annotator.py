@@ -6,12 +6,36 @@ import json
 import copy
 import re
 from functools import reduce
+from argparse import ArgumentParser
 
-galaxies_json = sys.argv[1]
-style_json = sys.argv[2]
-wcs_fits = sys.argv[3]
-image_file = sys.argv[4]
-out_file = sys.argv[5]
+argparser = ArgumentParser(description='Convert votable.xml to galaxies.json '\
+                           "for 'galaxy-annotator.py'.")
+argparser.add_argument('galaxies_json', metavar='galaxies.json',
+                       help="annotation data file.")
+argparser.add_argument('style_json', metavar='style.json',
+                       help="style sttings.")
+argparser.add_argument('wcs_fits', metavar='wcs.fits',
+                       help="wcs file(output of astrometry.net in FITS format).")
+argparser.add_argument('image_file', metavar='image_file',
+                       help="image file(input of astrometry.net in image format "\
+                       "(JPEG/PNG etc.)).")
+argparser.add_argument('out_file', metavar='out.svg',
+                       help="output image file in SVG format.")
+argparser.add_argument("-f", "--force-overwrite", action="store_true",
+                       help="force overwriting to output image file.")
+argparser.add_argument("--debug", action="store_true",
+                       help="debug mode.")
+args = argparser.parse_args()
+if not args.out_file:
+    argparser.print_help(sys.stderr)
+    exit(1)
+
+galaxies_json = args.galaxies_json
+style_json = args.style_json
+wcs_fits = args.wcs_fits
+image_file = args.image_file
+out_file = args.out_file
+debug = args.debug
 
 with open(galaxies_json, 'r', encoding='utf-8') as f:
     galaxies = json.load(f)
@@ -100,7 +124,7 @@ def parse_label_position(value, file):
     if not(res):
         print('{}: ERROR: "label-position" of "marker" '\
               'is invalid.'.format(file), file=sys.stderr)
-        sys.exit()
+        sys.exit(1)
     else:
         return [res.group(2), res.group(1)]
 
@@ -119,7 +143,7 @@ def parse_label_valign(value, file):
     if not(res):
         print('{}: ERROR: "label-vertical-align" of "marker" '\
               'is invalid.'.format(file), file=sys.stderr)
-        sys.exit()
+        sys.exit(1)
     else:
         return res.group(1)    
 
@@ -130,12 +154,12 @@ if not (type(style['name']['font-size']) == int or
         type(style['name']['font-size']) == float):
     print('{}: ERROR: "font-size" of "name" '\
           'must be of numeric type.'.format(style_json), file=sys.stderr)
-    sys.exit()
+    sys.exit(1)
 for i, desc in enumerate(style['desc']):
     if not (type(desc['font-size']) == int or type(desc['font-size']) == float):
         print('{}: ERROR: "font-size" of "desc"[{}] must be of '\
               'numeric type.'.format(style_json, i), file=sys.stderr)
-        sys.exit()
+        sys.exit(1)
 
 parse_label_valign(style['marker']['label-vertical-align'], style_json)
 def_label_position = style['marker']['label-position']
@@ -152,11 +176,21 @@ for i, desc in enumerate(style['desc']):
         desc['text-anchor'] = def_label_anchor
     style_sheet += s_to_ss('text.desc{}'.format(i), desc)
 
-if out_file and os.path.exists(out_file):
+if debug:
+    style_sheet += '''
+.debug_marker { fill: none; stroke: white; stroke-width: 2px; stroke-opacity: 0.8; }
+.debug_margin { fill: none; stroke: white; stroke-width: 1.5px; stroke-opacity: 0.8; stroke-dasharray: 8;}
+.debug_centerline { fill: none; stroke: white; stroke-width: 1.5px; stroke-opacity: 0.6; stroke-dasharray: 8 4;}
+.debug_baseline { fill: none; stroke: white; stroke-width: 1.5px; stroke-opacity: 0.8; stroke-dasharray: 16;}
+.debug_middleline { fill: none; stroke: white; stroke-width: 1.5px; stroke-opacity: 0.6; stroke-dasharray: 8 4;}
+.debug_label { fill: none; stroke: white; stroke-width: 2px; stroke-opacity: 0.8; }
+'''
+
+if out_file and os.path.exists(out_file) and (not args.force_overwrite):
     input = input("output file '" + out_file + "' exists. overwrite? > ")
     if input.upper() != 'YES':
         print('bye.')
-        sys.exit()
+        sys.exit(1)
 
 import base64
 import svgwrite
@@ -287,7 +321,7 @@ for gal in galaxies['galaxies']:
                    marker_ry**2 * math.sin(th)**2)
     dy = math.sqrt(marker_rx**2 * math.sin(th)**2 +
                    marker_ry**2 * math.cos(th)**2)
-
+    
     x_margin = float(gal_style['marker']['x-margin'])
     y_margin = float(gal_style['marker']['y-margin'])
 
@@ -345,5 +379,55 @@ for gal in galaxies['galaxies']:
             if desc_ss and i < len(desc_ss):
                 desc_text.update({ 'style': desc_ss[i] })
             svg_group.add(desc_text)
+
+    if debug:
+        marker_rect = drw.rect(insert=(x-dx,y-dy), size=(2*dx,2*dy),
+                               class_='debug_marker')
+        margin_rect = drw.rect(insert=(x-dx-x_margin,y-dy-y_margin),
+                               size=(2*(dx+x_margin),2*(dy+y_margin)),
+                               class_='debug_margin')
+        center_line_h = drw.line(start=(x-dx-x_margin,y), end=(x+dx+x_margin,y),
+                                 class_='debug_centerline')
+        center_line_v = drw.line(start=(x,y-dy-y_margin), end=(x,y+dy+y_margin),
+                                 class_='debug_centerline')
+        label_width = name_height*12 # not a real width.
+        name_baseline = drw.line(start=(name_x,name_y),
+                                 end=(name_x+label_width,name_y),
+                                 class_='debug_baseline')
+        middle_y = name_y - name_height + (name_height + desc_height) / 2
+        label_middleline = drw.line(start=(name_x,middle_y),
+                                    end=(name_x+label_width,middle_y),
+                                    class_='debug_middleline')
+        label_rect = drw.rect(insert=(name_x,name_y-name_height),
+                              size=(label_width,name_height+desc_height),
+                              class_='debug_label')
+        if x_pos == 'left':
+            name_baseline.scale(-1, 1)
+            name_baseline.translate(-name_x*2, 0)
+            label_middleline.scale(-1, 1)
+            label_middleline.translate(-name_x*2, 0)
+            label_rect.scale(-1, 1)
+            label_rect.translate(-name_x*2, 0)
+        elif x_pos == 'middle':
+            center_x = name_x + label_width / 2
+            label_centerline = drw.line(start=(center_x,name_y-name_height),
+                                        end=(center_x,name_y+desc_height),
+                                        class_='debug_middleline')
+            name_baseline.translate(-label_width/2, 0)
+            label_middleline.translate(-label_width/2, 0)
+            label_centerline.translate(-label_width/2, 0)
+            label_rect.translate(-label_width/2, 0)
+            
+        debug_group = drw.g()
+        debug_group.add(marker_rect)
+        debug_group.add(margin_rect)
+        debug_group.add(center_line_h)
+        debug_group.add(center_line_v)
+        debug_group.add(name_baseline)
+        debug_group.add(label_middleline)
+        if x_pos == 'middle':
+            debug_group.add(label_centerline)
+        debug_group.add(label_rect)
+        drw.add(debug_group)
 
 drw.save(pretty=True)
