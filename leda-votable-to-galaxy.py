@@ -43,6 +43,12 @@ argparser.add_argument("--distance-calculation-compatibility",
                        action='store_false', default=True,
                        help="compatibility option for distance calculation "\
                        "method of v0.7 or erlier.")
+argparser.add_argument("--show-negative-redshift",
+                       dest="show_negative_redshift_description", 
+                       action='store_true', default=False,
+                       help="skip negative redshift error and output z value "\
+                       "instead of distance.")
+                       
 args = argparser.parse_args()
 if not args.votable_xml:
     argparser.print_help(sys.stderr)
@@ -101,7 +107,7 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
         elif rec['v']:
             z = float(rec['v']) / 299792.458
         
-        if z != None:
+        if z != None and z >= 0:
             d = cosmo.lookback_distance(z)
             d_str = ''
             d_ly = d.to(u.lyr).value
@@ -125,7 +131,12 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
                 d_str = str(d_ly_r / 1000000000) + ' Gly'
             
             descs.append(d_str)
-
+        elif z != None:
+            print("WARN: negative redshift value found for '{}' "\
+                  "(z={}).".format(rec['objname'], z), file=sys.stderr)
+            if args.show_negative_redshift_description:
+                descs.append("z={}".format(z))
+    
     name = rec['objname']
     if (not (name.startswith('PGC') or
              name.startswith('NGC') or
