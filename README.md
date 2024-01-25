@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.9.1
+# Galaxy Annotator v0.9.2
 
 ## 概要
 
@@ -322,7 +322,11 @@ python leda-votable-to-galaxy.py -m 17.5 -d -j -p 4 votable.xml galaxies-17_5-d-
 光路距離の計算には、宇宙モデルとしてはΛ-CDMモデルを、宇宙論パラメータとしては H<sub>0</sub> = 67.3 km/s/Mpc、Ω<sub>m</sub> = 0.315、Ω<sub>Λ</sub> = 0.685 を使用しています(これらは国立天文台が一般向けに遠方天体の距離に言及する際に使用しているものです)。
 
 ## 更新履歴
-
+- v0.9.2: 不具合修正版
+  - fixed: #14 galaxy.json で style を指定すると NameError になることがある
+  - fixed: galaxies.json で特定の銀河に指定したスタイルが意図しない銀河に影響する
+  - いずれも galaxy-annotator.py の修正で、votable.xml の再取得や galaxies.json
+	の再生成は必要ない。
 - v0.9.1: 不具合修正版
   - fixed: 元画像によってはうまくいかないことがある？ #12
     - leda-votable-to-galaxy.py で votable に光度距離情報がなく視線速
