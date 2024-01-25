@@ -249,6 +249,7 @@ for gal in galaxies['galaxies']:
     desc_ss = None
     if 'style' in gal:
         s = gal['style']
+        s_label_position = None
         if 'marker' in s:
             s_label_position = s['marker']['label-position'] \
                                if ('label-position' in s['marker']) else None
