@@ -14,6 +14,8 @@ argparser.add_argument("-m", "--max-magnitude", dest="max_mag", type=float,
                        help="maximum total magnitude(it,vt,bt)", metavar="MAG")
 argparser.add_argument("-f", "--force-overwrite", action="store_true",
                        help="force overwriting to output file.")
+argparser.add_argument("--dry-run", dest="dryrun", action="store_true",
+                       help="force overwriting to output file.")
 args = argparser.parse_args()
 if not args.wcs_fits:
     argparser.print_help(sys.stderr)
@@ -45,6 +47,9 @@ sky_bottom_left = w.pixel_to_world(0, image_h)
 sky_bottom_right = w.pixel_to_world(image_w, image_h)
 sky_center = w.pixel_to_world(image_w/2, image_h/2)
 
+def hit_test(x, y):
+    return (x >= 0 and x < image_w) and (y >= 0 and y < image_h)
+
 def ra_min_max(ra_left, ra_right):
     # 写野に極が入らないと仮定
     # センターを挟んで対角線を辿って前後のRAの差の符号が食い違うなら
@@ -57,22 +62,53 @@ def ra_min_max(ra_left, ra_right):
         ra_min = min(ra_left, ra_right)
     return ra_min, ra_max
 
-ra_min1, ra_max1 = ra_min_max(sky_top_left.ra.hour, sky_bottom_right.ra.hour)
-ra_min2, ra_max2 = ra_min_max(sky_bottom_left.ra.hour, sky_top_right.ra.hour)
+ra_min = None
+ra_max = None
+dec_min = None
+dec_max = None
 
-ra_min = min(ra_min1, ra_min2)
-ra_max = max(ra_max1, ra_max2)
-dec_min = min(sky_top_left.dec.degree, sky_top_right.dec.degree,
-              sky_bottom_left.dec.degree, sky_bottom_right.dec.degree)
-dec_max = max(sky_top_left.dec.degree, sky_top_right.dec.degree,
-              sky_bottom_left.dec.degree, sky_bottom_right.dec.degree)
+import warnings
+warnings.filterwarnings('ignore', category=RuntimeWarning)
+warnings.filterwarnings('ignore', category=UserWarning)
+px, py = w.world_to_pixel(SkyCoord(0*u.hour, 90.0*u.deg))
+spx, spy = w.world_to_pixel(SkyCoord(0*u.hour, -90.0*u.deg))
+warnings.filterwarnings('default', category=RuntimeWarning)
+warnings.filterwarnings('default', category=UserWarning)
+
+if hit_test(px, py):
+    # 写野に天の北極がある場合
+    dec_min = min(sky_top_left.dec.degree, sky_top_right.dec.degree,
+                  sky_bottom_left.dec.degree, sky_bottom_right.dec.degree)
+    dec_max = 90.0
+    ra_min = 0.0
+    ra_max = 24.0
+elif hit_test(spx, spy):
+    # 写野に天の南極がある場合
+    dec_min = -90.0
+    dec_max = max(sky_top_left.dec.degree, sky_top_right.dec.degree,
+                  sky_bottom_left.dec.degree, sky_bottom_right.dec.degree)
+    ra_min = 0.0
+    ra_max = 24.0
+else:    
+    ra_min1, ra_max1 = ra_min_max(sky_top_left.ra.hour, sky_bottom_right.ra.hour)
+    ra_min2, ra_max2 = ra_min_max(sky_bottom_left.ra.hour, sky_top_right.ra.hour)
+    ra_min = min(ra_min1, ra_min2)
+    ra_max = max(ra_max1, ra_max2)
+    dec_min = min(sky_top_left.dec.degree, sky_top_right.dec.degree,
+                  sky_bottom_left.dec.degree, sky_bottom_right.dec.degree)
+    dec_max = max(sky_top_left.dec.degree, sky_top_right.dec.degree,
+                  sky_bottom_left.dec.degree, sky_bottom_right.dec.degree)
 
 mag_where = ""
 if args.max_mag:
     mm = args.max_mag
-    mag_where = f"and (it<={mm} or vt<={mm} or it<={mm})"
+    mag_where = f"and (it<={mm} or vt<={mm} or bt<={mm})"
 
 where = f"al2000<{ra_max} and al2000>{ra_min} and de2000<{dec_max} and de2000>{dec_min} and objtype='G' {mag_where}"
+
+if args.dryrun:
+    print(f"WHERE {where}")
+    exit(0)
 
 select = "pgc,objname,objtype,al1950,de1950,al2000,de2000,l2,b2,sgl,sgb,f_astrom,type,bar,ring,multiple,compactness,t,e_t,agnclass,logd25,e_logd25,logr25,e_logr25,pa,brief,e_brief,ut,e_ut,bt,e_bt,vt,e_vt,it,e_it,kt,e_kt,m21,e_m21,mfir,ube,bve,vmaxg,e_vmaxg,vmaxs,e_vmaxs,vdis,e_vdis,vrad,e_vrad,vopt,e_vopt,v,e_v,ag,ai,incl,a21,logdc,btc,itc,ubtc,bvtc,bri25,vrot,e_vrot,mg2,e_mg2,m21c,hic,vlg,vgsr,vvir,v3k,modz,e_modz,mod0,e_mod0,modbest,e_modbest,mabs,e_mabs,hl_names(pgc)"
 
