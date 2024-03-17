@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.9.2
+# Galaxy Annotator v0.9.3 dev
 
 ## 概要
 
@@ -253,6 +253,8 @@ python leda-get-votable.py test-data/test-wcs.fits votable.xml
 第1引数には Astrometry.net の出力した `wcs.fits` を指定します。結果は第2引数で指定した `votable.xml` に保存されます。第2引数を省略した場合は標準出力に表示されます。
 
 保存先のファイルが既に存在する場合は `galaxy-annotator.py` と同様の上書き警告のプロンプトが表示されるので、上書きする場合は `yes` を、キャンセルする場合は `no` を入力してください。なお、`-f` オプションを指定すると無警告で上書きします。
+
+写野が広く HyperLeda での検索対象となる銀河が多すぎて応答がなかなか返らない場合は、 `-m` オプションで最大等級を指定して検索対象を制限します。`-m 10` なら 10 等までの銀河のデータだけを取得します。
 
 ### VOTABLE 形式(XML)からの銀河情報ファイルの生成
 
