@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.9.3
+# Galaxy Annotator v0.9.4 dev
 
 ## 概要
 
@@ -15,7 +15,7 @@
 
 ## 動作環境
 
-- Python 3.2 以降
+- Python 3.6 以降
 - astropy
 - svgwrite
 
@@ -287,6 +287,14 @@ no magnitude data for '6dFJ1335298-295039'.
 python leda-votable-to-galaxy.py -m 17 -s -d -j M83-votable.xml M83-galaxies.json
 ```
 
+銀河名が複数ある場合、銀河情報ファイルの name (銀河名)に出力される名前はデフォルトで、メシエ番号("M31"等)、NGC番号("NGC2903"等)、IC番号("IC815A"等)、PGC番号("PGC1399872"等)、objnameの表記+PGC番号("UGC02838(PGC13696)"等)の優先順位で選択されます。
+
+銀河名の優先順位は `--resolve-order` オプションで変更できます。オプション引数には M,NGC,IC,PGC を優先順にカンマで区切って列挙した文字列を指定します。以下は NGC を最優先にして、NGC,IC番号がない場合には M,PGC番号があっても objname 表記を出力する例です。
+
+```
+python leda-votable-to-galaxy.py -m 17 -s -d -j --resolve-order NGC,IC M83-votable.xml M83-galaxies.json
+```
+
 ### 距離情報を含んだ銀河情報ファイルの生成
 
 `leda-votable-to-galaxy.py` で `-d` オプションを指定すると距離情報(Gly (ギガ光年)表記の光路距離)を説明文として付加した銀河情報ファイルに出力します。以下は 17.5 等より明るい銀河のみを、距離情報付きで出力する例です。
@@ -295,7 +303,7 @@ python leda-votable-to-galaxy.py -m 17 -s -d -j M83-votable.xml M83-galaxies.jso
 python leda-votable-to-galaxy.py -m 17.5 -d votable.xml galaxies-17_5-d.json
 ```
 
-以下はさらに `-j` オプションを追加して距離情報を日本語表記(光年)で出力する例です。
+以下は `-j` オプションを追加して距離情報を日本語表記(光年)で出力する例です。
 
 ```
 python leda-votable-to-galaxy.py -m 17.5 -d -j votable.xml galaxies-17_5-d-ja.json
