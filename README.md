@@ -1,4 +1,4 @@
-# Galaxy Annotator v0.9.4 dev
+# Galaxy Annotator v0.9.4
 
 ## 概要
 
@@ -332,6 +332,14 @@ python leda-votable-to-galaxy.py -m 17.5 -d -j -p 4 votable.xml galaxies-17_5-d-
 光路距離の計算には、宇宙モデルとしてはΛ-CDMモデルを、宇宙論パラメータとしては H<sub>0</sub> = 67.3 km/s/Mpc、Ω<sub>m</sub> = 0.315、Ω<sub>Λ</sub> = 0.685 を使用しています(これらは国立天文台が一般向けに遠方天体の距離に言及する際に使用しているものです)。
 
 ## 更新履歴
+- v0.9.4: 仕様変更、機能追加版
+  - leda-votable-to-galaxy.py が出力する name の仕様を変更
+    - v0.9.3 以降の leda-get-votable.py で取得した votable.xml が必要になった。
+    - 銀河名が複数ある場合はメシエ番号、NGC番号、IC番号、PCG番号、objnameの表記+
+      括弧書きのPGC番号、の優先順位で選択して出力するようにした。
+    - 名前の番号部分の冒頭の 0 を出力しないようにした。
+  - leda-votable-to-galaxy.py に  name に出力する銀河名の優先順位を指定する
+	オプション `--resolve-order` オを追加した。
 - v0.9.3: 不具合修正、機能追加版
   - fixed: #17 写野に極が入る場合、leda-get-votable.py のSQLクエリの座
     標範囲指定がおかしくなるはず
