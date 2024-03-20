@@ -1,9 +1,39 @@
 #!/usr/bin/env python
 import sys
+import re
 from argparse import ArgumentParser
+
+NUMBER_PATTERN = re.compile('\d+')
+MESSIER_PATTERN = re.compile('^MESSIER\d+$')
+NGC_PATTERN = re.compile('^NGC\d+[A-Z]?$')
+IC_PATTERN = re.compile('^IC\d+[A-Z]?$')
+PGC_PATTERN = re.compile('^PGC\d+[A-Z]?$')
 
 def float_or_none(v):
     return float(v) if v else None
+
+def zero_suppress(name):
+    m = NUMBER_PATTERN.search(name)
+    if m:
+        num = m.group()
+        return name.replace(num, str(int(num)))
+    else:
+        return name
+
+def search_galaxy_name(cat, names):
+    if cat == 'M':
+        for name in filter(lambda x: bool(MESSIER_PATTERN.match(x)), names):
+            return zero_suppress(name).replace('MESSIER', 'M')
+    elif cat == 'NGC':
+        for name in filter(lambda x: bool(NGC_PATTERN.match(x)), names):
+            return zero_suppress(name)
+    elif cat == 'IC':
+        for name in filter(lambda x: bool(IC_PATTERN.match(x)), names):
+            return zero_suppress(name)
+    elif cat == 'PGC':
+        for name in filter(lambda x: bool(PGC_PATTERN.match(x)), names):
+            return zero_suppress(name)
+    return None
 
 argparser = ArgumentParser(description='Convert votable.xml to galaxies.json '\
                            "for 'galaxy-annotator.py'.")
@@ -48,11 +78,24 @@ argparser.add_argument("--show-negative-redshift",
                        action='store_true', default=False,
                        help="skip negative redshift error and output z value "\
                        "instead of distance.")
+argparser.add_argument("--resolve-order",
+                       dest="resolve_order", default="M,NGC,IC,PGC",
+                       help="specify the priority order for resolving "\
+                       "galaxy names as M, NGC, IC, PGC (default: M,NGC,IC,PGC).")
                        
 args = argparser.parse_args()
 if not args.votable_xml:
     argparser.print_help(sys.stderr)
     exit(1)
+
+resolve_list = args.resolve_order.split(',')
+for cat in resolve_list:
+    if cat in [ 'M', 'NGC', 'IC', 'PGC' ]:
+        break
+    else:
+        print(f'unknown catalogue in resolve-order: {cat}')
+        sys.exit()
+
 if args.galaxies_json:
     import os.path
     if (not args.force_overwrite) and os.path.exists(args.galaxies_json):
@@ -136,13 +179,14 @@ for tr in root.findall('./RESOURCE/TABLE/DATA/TABLEDATA/TR'):
                   "(z={}).".format(rec['objname'], z), file=sys.stderr)
             if args.show_negative_redshift_description:
                 descs.append("z={}".format(z))
-    
-    name = rec['objname']
-    if (not (name.startswith('PGC') or
-             name.startswith('NGC') or
-             name.startswith('IC') or
-             name.startswith('M'))):
-        name += "(PGC" + rec['pgc'] + ")"
+
+    hl_names = list(map(lambda x: x.strip(), rec['hl_names'].split(',')))
+    for cat in resolve_list:
+        name = search_galaxy_name(cat, hl_names)
+        if name != None:
+            break
+    if name == None:
+        name = f"{rec['objname']}(PGC{rec['pgc']})"
     
     galaxies.append({
         "name": name,
